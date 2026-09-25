@@ -8,8 +8,9 @@ from pathlib import Path
 
 import numpy as np
 
-# numpy<2 compatibility: trapezoid was added in numpy 2.0 (trapz before)
-_trapezoid = getattr(np, "trapezoid", np.trapz)
+# numpy<2 compatibility: trapezoid was added in numpy 2.0 (trapz before, and
+# removed in 2.0 — so neither name can be referenced unguarded)
+_trapezoid = getattr(np, "trapezoid", getattr(np, "trapz", None))
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
