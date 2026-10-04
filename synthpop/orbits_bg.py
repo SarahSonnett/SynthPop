@@ -27,10 +27,11 @@ from .config import SynthConfig
 from .orbits_family import Orbits
 
 
-# Default mapping for a standard S3M COM-format file. Override via cfg.s3m_columns.
+# Default mapping for MPC-derived s3m files (layout: id S3M q e i node argperi t_peri H G epoch n_opp MPC). Override via
+# cfg.s3m_columns for other flavours.
 _DEFAULT_S3M_COLUMNS = {
     "format": "COM",   # "COM" or "KEP"
-    "q": 1, "e": 2, "i": 3, "node": 4, "argperi": 5, "t_peri": 6,
+    "q": 2, "e": 3, "i": 4, "node": 5, "argperi": 6, "t_peri": 7,
     # for KEP format instead: "a", "e", "i", "node", "argperi", "M"
 }
 
@@ -43,21 +44,29 @@ def load_s3m_elements(cfg: SynthConfig):
     if cfg.s3m_columns:
         cmap.update(cfg.s3m_columns)
 
-    # whitespace-delimited, skipping comment/header lines starting with ! # or letters
-    raw = np.genfromtxt(cfg.s3m_file, comments="!", dtype=float, invalid_raise=False)
+    # Read ONLY the element columns: s3m rows carry string fields (the id and
+    # the "S3M"/"MPC" markers), which would turn whole-row float parsing into
+    # NaNs and silently drop every orbit.
+    keys = (("a", "e", "i", "node", "argperi", "M")
+            if cmap["format"].upper() == "KEP"
+            else ("q", "e", "i", "node", "argperi", "t_peri"))
+    usecols = [cmap[k] for k in keys]
+    raw = np.genfromtxt(cfg.s3m_file, comments="!", usecols=usecols,
+                        dtype=float, invalid_raise=False)
+    raw = np.atleast_2d(raw)
     raw = raw[np.isfinite(raw).all(axis=1)]
+    col = {k: raw[:, j] for j, k in enumerate(keys)}
 
-    e = raw[:, cmap["e"]]
-    i = raw[:, cmap["i"]]
-    node = raw[:, cmap["node"]]
-    argperi = raw[:, cmap["argperi"]]
+    e = col["e"]
+    i = col["i"]
+    node = col["node"]
+    argperi = col["argperi"]
 
     if cmap["format"].upper() == "KEP":
-        a = raw[:, cmap["a"]]
-        M = raw[:, cmap["M"]]
+        a = col["a"]
+        M = col["M"]
     else:  # COM: q, e (+ time of perihelion -> random mean anomaly)
-        q = raw[:, cmap["q"]]
-        a = q / (1.0 - e)
+        a = col["q"] / (1.0 - e)
         M = None  # filled with uniform draws by the caller
 
     return {"a": a, "e": e, "i": i, "node": node, "argperi": argperi, "M": M}

@@ -479,6 +479,78 @@ def test_ensemble_bootstrap_width_shrinks_with_more_members():
     assert scatter(2000) < scatter(80)
 
 
+def test_s3m_loader_string_columns():
+    """Regression: s3m rows carry string fields (id, "S3M", "MPC") that must
+    not NaN-drop the orbits, and the default column map
+    must match the local MPC-derived layout."""
+    import tempfile, os
+    from synthpop.orbits_bg import load_s3m_elements
+
+    rows = [
+        "00588     S3M    4.4449651    0.1465235  10.31674 316.54491 "
+        "133.59715  55728.23672  8.67  0.15  57800.00000   49.000 MPC",
+        "K07Tf8A   S3M    4.9000000    0.0500000   5.00000  10.00000 "
+        " 20.00000  55000.00000 12.00  0.15  57800.00000    3.000 MPC",
+    ]
+    with tempfile.NamedTemporaryFile("w", suffix=".s3m", delete=False) as f:
+        f.write("\n".join(rows) + "\n")
+        tmp = f.name
+    try:
+        cfg = SynthConfig(name="s3m_test", mode=FAMILY, s3m_file=tmp)
+        el = load_s3m_elements(cfg)
+        assert el["a"].size == 2, "string columns must not drop rows"
+        assert abs(el["a"][0] - 4.4449651 / (1 - 0.1465235)) < 1e-6  # 588: a=5.21
+        assert abs(el["i"][1] - 5.0) < 1e-9
+        assert el["M"] is None  # COM format: mean anomaly drawn by caller
+    finally:
+        os.unlink(tmp)
+
+
+def test_family_elements_reader_and_guard():
+    """Elements reader round-trip + misalignment guard."""
+    import tempfile, os
+    from synthpop.orbits_family import load_family_members as _lfe
+    good = ("   189693    16.01      2.306833      0.164261      0.203064   0\n"
+            "    58339    16.00      2.305768      0.114702      0.076727   0\n")
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+        f.write(good); p = f.name
+    cfg = SynthConfig(name="t", mode=FAMILY, family_members_file=p,
+                      family_cols=[0, 1, 2, 3, 4, 5])
+    desig, H, a, e, sini = _lfe(cfg)
+    os.unlink(p)
+    assert list(desig) == ["189693", "58339"]
+    assert abs(a[1] - 2.305768) < 1e-9
+
+    bad = ("   189693    16.01      2.306833      0.164261      0.203064   0\n"
+           "   2008 RK58 16.00      2.305768      0.114702      0.076727   0\n")
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+        f.write(bad); p = f.name
+    cfg.family_members_file = p
+    try:
+        _lfe(cfg)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("ragged elements row not rejected")
+    finally:
+        os.unlink(p)
+
+
+def test_ensemble_outdir_no_double_nesting():
+    """Explicit out_dir must be used verbatim; the default appends exactly
+    one <name>_ensemble (double-nesting hides ensembles from zone scans)."""
+    from synthpop.ensemble import EnsembleConfig
+    from pathlib import Path
+    cfg = SynthConfig(name="PopX", mode=FAMILY, out_dir="/tmp/zone")
+    e1 = EnsembleConfig(base=cfg, n_members=2, seed=0)
+    assert e1.out_dir == Path("/tmp/zone/PopX_ensemble")
+    e2 = EnsembleConfig(base=cfg, n_members=2, seed=0,
+                        out_dir="/tmp/zone/PopX_ensemble")
+    assert e2.out_dir == Path("/tmp/zone/PopX_ensemble")
+    assert "_ensemble/PopX_ensemble" not in str(e2.out_dir) or \
+        str(e2.out_dir).count("PopX_ensemble") == 1
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

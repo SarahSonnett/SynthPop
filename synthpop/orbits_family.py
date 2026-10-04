@@ -78,6 +78,16 @@ def load_family_members(cfg: SynthConfig):
     designation = np.genfromtxt(cfg.family_members_file, usecols=[cols[0]], dtype=str)
     elems = np.genfromtxt(cfg.family_members_file,
                           usecols=[cols[1], cols[2], cols[3], cols[4]], dtype=float)
+    designation = np.atleast_1d(designation)
+    elems = np.atleast_2d(elems)
+    # Guard: ragged rows (e.g. designations with internal
+    # spaces) can silently misalign the string and float reads -- refuse.
+    if designation.shape[0] != elems.shape[0] or not np.isfinite(elems).all():
+        raise ValueError(
+            f"{cfg.family_members_file}: inconsistent or non-numeric rows "
+            f"({designation.shape[0]} ids vs {elems.shape[0]} element rows). "
+            f"Element files must be uniform whitespace columns with no "
+            f"internal spaces in designations.")
     H, a, e, sini = elems[:, 0], elems[:, 1], elems[:, 2], elems[:, 3]
     return designation, H, a, e, sini
 
