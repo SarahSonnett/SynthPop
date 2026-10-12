@@ -75,10 +75,10 @@ class SynthConfig:
     # --- shape & pole (shape_pole.py, from PyLEADER) ----------------------
     diameter_bins: Sequence[DiameterBin] = field(default_factory=list)
     # beta is the pole's ecliptic latitude (standard convention; what N&K 2017
-    # call beta is the colatitude, 90 - |beta|). LEADER is hemisphere-
+    # call beta is the polar angle, 90 - |beta|). LEADER is hemisphere-
     # degenerate: only |beta| in [0, 90] deg is constrained, so the catalog
     # stores the magnitude (no invented sign). Legacy PyLEADER files hold the
-    # colatitude; see the KNOWN ISSUE note in shape_pole.py.
+    # polar angle; see the KNOWN ISSUE note in shape_pole.py.
     # rotation period, log-uniform between these bounds (hours); typical MBA
     # range, matching the spin-barrier floor at ~2.2 h
     rot_period_min_h: float = 2.2

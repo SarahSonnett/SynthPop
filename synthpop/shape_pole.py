@@ -23,14 +23,14 @@ the DAMIT database): beta = 0 is an axis in the ecliptic plane, |beta| = 90 an
 axis perpendicular to it. LEADER cannot distinguish the hemispheres, so only
 |beta| in [0, 90] deg is constrained and ``pole_beta_deg`` stores that
 magnitude. Nortunen & Kaasalainen (2017, Sect. 2) write beta for a different
-angle, the **colatitude** (angle of the spin axis from the ecliptic pole,
+angle, the **polar angle** (angle of the spin axis from the ecliptic pole,
 ``90 - |beta|``). For a low-inclination orbit the obliquity is approximately
 ``90 - |beta|`` deg (prograde branch) or ``90 + |beta|`` deg (retrograde
 branch).
 
 KNOWN ISSUE (2026-10-12): PyLEADER summaries produced so far store the
-colatitude in ``b_grid``, and :func:`assign_shape_pole` copies it unconverted,
-so ``pole_beta_deg`` in catalogs produced to date holds the colatitude rather
+polar angle in ``b_grid``, and :func:`assign_shape_pole` copies it unconverted,
+so ``pole_beta_deg`` in catalogs produced to date holds the polar angle rather
 than |beta| (for a low-inclination orbit, obliquity ~ the stored value on the
 prograde branch, 180 minus it on the retrograde branch). The fix is scheduled
 upstream: PyLEADER will write |beta| with an explicit convention key, which
@@ -97,7 +97,7 @@ def assign_shape_pole(cfg: SynthConfig, diameters: np.ndarray,
         beta[idx] = bta
 
     # LEADER constrains only |beta|; store the magnitude (no invented sign)
-    # KNOWN ISSUE: legacy PyLEADER files give the colatitude (fix scheduled upstream)
+    # KNOWN ISSUE: legacy PyLEADER files give the polar angle (fix scheduled upstream)
     pole_beta = np.clip(np.abs(beta), 0.0, 90.0)
     pole_lambda = rng.random(n) * 360.0
 

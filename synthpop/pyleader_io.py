@@ -13,7 +13,7 @@ consume is:
 
 * ``population_distribution.npz`` -- the debiased **joint** distribution of
   shape elongation ``p = b/a`` and pole latitude ``beta`` (files written
-  before the 2026-10-12 convention change hold N&K's colatitude instead; see
+  before the 2026-10-12 convention change hold N&K's polar angle instead; see
   the KNOWN ISSUE in shape_pole.py):
     - ``p_grid`` (nx,), ``b_grid`` (ny,)  -- bin centers
     - ``f_mean`` (nx, ny)                 -- joint density (with ``f_lo``/``f_hi`` bounds)
@@ -53,7 +53,7 @@ class LeaderDistributions:
 
     joint: EmpiricalPDF2D          # f_mean(p, beta); sample (b/a, |beta|) pairs
     p_grid: np.ndarray             # shape-elongation bin centers (b/a)
-    b_grid: np.ndarray             # pole-latitude bin centers, degrees (colatitude in legacy files)
+    b_grid: np.ndarray             # pole-latitude bin centers, degrees (polar angle in legacy files)
     f_mean: np.ndarray             # (nx, ny) joint density
     pop_median_p: np.ndarray       # (median, lo, hi)
     pop_median_b: np.ndarray       # (median, lo, hi)

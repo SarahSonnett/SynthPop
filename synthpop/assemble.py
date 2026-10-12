@@ -18,7 +18,7 @@ COLUMNS = [
     "b_over_a",         # shape elongation b/a in (0,1], from PyLEADER
     "pole_beta_deg",    # |spin-pole ecliptic latitude| in [0, 90] (LEADER is
                         #   hemisphere-degenerate; obliquity ~ 90 -/+ |lat|).
-                        #   KNOWN ISSUE: legacy catalogs hold the colatitude
+                        #   KNOWN ISSUE: legacy catalogs hold the polar angle
     "pole_lambda_deg",  # spin-pole ecliptic longitude [0,360)
     "rot_period_h",     # rotation period (hours), log-uniform draw
     "a_au", "e", "i_deg", "node_deg", "argperi_deg", "M_deg",  # orbit

@@ -50,18 +50,18 @@ ecliptic plane and |β| = 90° an axis perpendicular to it. LEADER cannot
 distinguish the hemispheres, so only |β| ∈ [0°, 90°] is constrained, and the
 catalog column `pole_beta_deg` records that magnitude (no hemisphere is
 assigned). Nortunen & Kaasalainen (2017, Sect. 2) write β for a different
-angle, the colatitude (the angle of the spin axis from the ecliptic pole,
+angle, the polar angle (the angle of the spin axis from the ecliptic pole,
 90° − |β|). For a low-inclination orbit the obliquity is approximately
 90° − |β| (prograde branch) or 90° + |β| (retrograde branch).
 
 *Known issue (2026-10-12).* PyLEADER summaries produced to date store the
-colatitude, and SynthPop copies it into `pole_beta_deg` unconverted, so
-catalogs produced to date hold the colatitude rather than |β| (for a
+polar angle, and SynthPop copies it into `pole_beta_deg` unconverted, so
+catalogs produced to date hold the polar angle rather than |β| (for a
 low-inclination orbit, obliquity ≈ the stored value on the prograde branch or
 180° minus it on the retrograde branch). The fix is scheduled upstream:
 PyLEADER will write |β| with an explicit convention key, which SynthPop will
 check and record in each catalog's provenance. Until then, read
-`pole_beta_deg` in existing catalogs as the colatitude. The `shape_pole.png`
+`pole_beta_deg` in existing catalogs as the polar angle. The `shape_pole.png`
 figure has the same problem: its latitude labels are wrong for these catalogs,
 and its secondary "approx. obliquity" axis (90° minus the plotted value) shows
 |β| rather than the obliquity.
@@ -359,7 +359,7 @@ publicly available (or reproducible) as follows:
   `Fam<id>_..._<low>km_to_<high>km_summary/` directories containing
   `population_distribution.npz`: the debiased joint distribution
   `f_mean(p, β)` of shape elongation (`p = b/a`) and pole latitude (`β`; files
-  written before 2026-10-12 hold the colatitude, see the known issue above)
+  written before 2026-10-12 hold the polar angle, see the known issue above)
   on grids `p_grid` × `b_grid`. These are produced by running the
   [PyLEADER](https://github.com/SarahSonnett/PyLEADER) population pipeline
   (Steps 2–6 of its README) on the family of interest; one run per diameter
@@ -558,7 +558,7 @@ will link it on publication.
   shape elongation and spin latitude distributions from scarce photometry*,
   Astronomy & Astrophysics, 608, A91.
   [doi:10.1051/0004-6361/201731360](https://doi.org/10.1051/0004-6361/201731360)
-  — the method implemented by PyLEADER; its β is the colatitude (see the β
+  — the method implemented by PyLEADER; its β is the polar angle (see the β
   convention above).
 - Radović, V., Novaković, B., Carruba, V., & Marčeta, D. 2017, *An automatic
   approach to exclude interlopers from asteroid families*, Monthly Notices of

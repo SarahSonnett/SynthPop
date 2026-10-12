@@ -298,7 +298,7 @@ def plot_shape_pole(df, out: Path, name: str, model_marginals=None) -> Path:
     # pole_beta_deg is the pole's |ecliptic latitude|; for a low-inclination
     # orbit the obliquity is ~ 90 - |beta| deg (prograde branch; the
     # retrograde branch is 90 + |beta|). KNOWN ISSUE (shape_pole.py): legacy
-    # catalogs hold the colatitude, so for them both axis labels are wrong.
+    # catalogs hold the polar angle, so for them both axis labels are wrong.
     sec = ax.secondary_xaxis("top", functions=(lambda b: 90.0 - b,
                                                lambda e: 90.0 - e))
     sec.set_xlabel("approx. obliquity (deg; prograde branch)", fontsize=8)
