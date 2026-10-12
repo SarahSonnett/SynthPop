@@ -2,7 +2,7 @@
 
 Builds a database of synthetic asteroids whose physical and orbital properties
 match the expected distributions from prior studies. Shape elongation (b/a) and
-spin-pole latitude come from PyLEADER distributions; pole longitude is uniform;
+spin-pole orientation come from PyLEADER distributions; pole longitude is uniform;
 orbits come from the s3m model (backgrounds) or the observed family
 (collisional families); albedo and beaming come from NEOWISE fits sampled by MCMC.
 

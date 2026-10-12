@@ -8,7 +8,7 @@ Three tools are used throughout SynthPop:
 * :func:`EmpiricalPDF2D` -- the 2-D analog, sampling ``(x, y)`` *pairs* from a
   binned joint density. Used for PyLEADER's joint shape/spin distribution
   ``f_mean(p, beta)`` (``population_distribution.npz``), preserving the
-  correlation between shape elongation and spin latitude.
+  correlation between shape elongation and spin-axis orientation.
 
 * :func:`metropolis` -- a small, dependency-free Metropolis MCMC sampler. The
   physical-parameter stage fits analytic distributions (double Rayleigh for

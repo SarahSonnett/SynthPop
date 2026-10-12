@@ -30,7 +30,7 @@ class DiameterBin:
 
     PyLEADER writes one ``Fam<id>_..._<low>km_to_<high>km_summary`` directory per
     diameter bin, containing ``population_distribution.npz`` -- the joint
-    distribution of shape elongation (p = b/a) and spin-axis latitude (beta).
+    distribution of shape elongation (p = b/a) and spin-axis polar angle (beta).
     We sample shape and pole from the bin whose [low, high) range contains an
     object's diameter.
     """
@@ -74,10 +74,11 @@ class SynthConfig:
 
     # --- shape & pole (shape_pole.py, from PyLEADER) ----------------------
     diameter_bins: Sequence[DiameterBin] = field(default_factory=list)
-    # PyLEADER beta (N&K 2017) is the spin pole's *ecliptic latitude*, and
-    # LEADER is hemisphere-degenerate: only |beta| in [0, 90] deg is
-    # constrained, so the catalog stores the magnitude (no invented sign).
-    # Obliquity ~ 90 deg -/+ |beta| (prograde/retrograde branch).
+    # PyLEADER beta (N&K 2017) is the spin axis's polar angle from the
+    # ecliptic pole, and LEADER is hemisphere-degenerate: only beta in
+    # [0, 90] deg is constrained, so the catalog stores a magnitude (no
+    # invented sign). pole_beta_deg is defined as |ecliptic latitude| =
+    # 90 - beta; see the KNOWN ISSUE note in shape_pole.py.
     # rotation period, log-uniform between these bounds (hours); typical MBA
     # range, matching the spin-barrier floor at ~2.2 h
     rot_period_min_h: float = 2.2

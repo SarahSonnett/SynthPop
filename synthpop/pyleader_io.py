@@ -12,7 +12,8 @@ The ``*_summary`` directory holds the population-level products. The one we
 consume is:
 
 * ``population_distribution.npz`` -- the debiased **joint** distribution of
-  shape elongation ``p = b/a`` and spin-axis latitude ``beta``:
+  shape elongation ``p = b/a`` and spin-axis polar angle ``beta`` (measured
+  from the ecliptic pole, Nortunen & Kaasalainen 2017):
     - ``p_grid`` (nx,), ``b_grid`` (ny,)  -- bin centers
     - ``f_mean`` (nx, ny)                 -- joint density (with ``f_lo``/``f_hi`` bounds)
     - ``pop_median_p`` / ``pop_median_b`` -- (median, lo, hi) population summaries
@@ -51,7 +52,7 @@ class LeaderDistributions:
 
     joint: EmpiricalPDF2D          # f_mean(p, beta); sample (b/a, |beta|) pairs
     p_grid: np.ndarray             # shape-elongation bin centers (b/a)
-    b_grid: np.ndarray             # spin-latitude bin centers, degrees
+    b_grid: np.ndarray             # spin-axis polar-angle bin centers, degrees
     f_mean: np.ndarray             # (nx, ny) joint density
     pop_median_p: np.ndarray       # (median, lo, hi)
     pop_median_b: np.ndarray       # (median, lo, hi)

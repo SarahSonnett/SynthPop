@@ -31,7 +31,7 @@ the Main Belt: either an established **collisional family** or a portion of the
 |----------|--------|--------|
 | diameter | `D` | (broken) power-law SFD, or log-uniform for detection-efficiency applications |
 | shape elongation | `b/a` | PyLEADER joint distribution `f_mean(p, β)` for the object's diameter bin |
-| pole latitude | `β` | same joint draw; stored as the magnitude \|β\| (hemisphere-degenerate) |
+| pole orientation | `β` | same joint draw (LEADER's spin-axis polar angle); `pole_beta_deg` is defined as the pole's \|ecliptic latitude\| = 90° − β (see the β convention below) |
 | pole longitude | `λ` | uniform on [0°, 360°) (unconstrained by LEADER) |
 | rotation period | `P` | log-uniform, 2.2–20 h by default (configurable) |
 | orbit | `a, e, i, Ω, ω, M` | s3m model (background) **or** family-based generation |
@@ -43,13 +43,24 @@ Within a subpopulation, `p_V`, `η`, and the remaining properties are sampled
 independently — no intrinsic correlations are assumed — following the approach
 of Lilly et al. (2021) for the NEO Surveyor synthetic population model.
 
-**Convention for β.** Following LEADER (Nortunen & Kaasalainen 2017), `β`
-denotes the **ecliptic latitude of the spin pole**, not the obliquity. The
-LEADER inversion is hemisphere-degenerate: only |β| ∈ [0°, 90°] is constrained,
-and the catalog therefore records the magnitude (`pole_beta_deg` is
-non-negative; no hemisphere is assigned). For a low-inclination orbit the
-obliquity is approximately 90° − |β| (prograde branch) or 90° + |β|
+**Convention for β.** In LEADER (Nortunen & Kaasalainen 2017, Sect. 2), `β` is
+the **polar angle of the spin axis measured from the ecliptic pole**, not the
+pole's ecliptic latitude and not the obliquity: β = 0° is an axis perpendicular
+to the ecliptic plane and β = 90° an axis lying in it. The LEADER inversion is
+hemisphere-degenerate, so only β ∈ [0°, 90°] is constrained and no hemisphere
+is assigned. The catalog column `pole_beta_deg` is defined as the magnitude of
+the pole's **ecliptic latitude**, |latitude| = 90° − β, which is what the
+downstream survey simulator reads. For a low-inclination orbit the obliquity is
+approximately 90° − |latitude| (prograde branch) or 90° + |latitude|
 (retrograde branch).
+
+*Known issue (2026-10-12).* The current code copies PyLEADER's β into
+`pole_beta_deg` without the 90° − β conversion, so catalogs produced to date
+hold the polar angle rather than the latitude (for a low-inclination orbit,
+obliquity ≈ β on the prograde branch or 180° − β on the retrograde branch).
+The conversion is scheduled. Until it lands, read `pole_beta_deg` in existing
+catalogs as the polar angle; the latitude labels on the `shape_pole.png`
+figure carry the same caveat.
 
 **Diameter sampling laws.** `--sfd powerlaw` (the default) draws from a
 realistic cumulative distribution `N(>D) ∝ D^−slope`. `--sfd loguniform` draws
@@ -72,8 +83,8 @@ The pipeline executes five stages (`synthpop/pipeline.py`):
 2. **Shape and pole** (`shape_pole.py`) — for each object, the PyLEADER
    diameter bin containing its `D` is identified (the narrowest containing bin
    is preferred; objects outside all bins adopt the nearest bin), and `b/a`
-   and |β| are drawn *jointly* from that bin's `f_mean(p, β)`, preserving any
-   correlation between shape and spin latitude. `λ` is drawn uniformly.
+   and β are drawn *jointly* from that bin's `f_mean(p, β)`, preserving any
+   correlation between shape and spin-axis orientation. `λ` is drawn uniformly.
 
 3. **Orbits** —
    * **Background** (`orbits_bg.py`): orbital elements are bootstrap-resampled
@@ -343,7 +354,7 @@ publicly available (or reproducible) as follows:
 * **PyLEADER population distributions** — the
   `Fam<id>_..._<low>km_to_<high>km_summary/` directories containing
   `population_distribution.npz`: the debiased joint distribution
-  `f_mean(p, β)` of shape elongation (`p = b/a`) and spin-axis latitude (`β`)
+  `f_mean(p, β)` of shape elongation (`p = b/a`) and spin-axis polar angle (`β`, from the ecliptic pole)
   on grids `p_grid` × `b_grid`. These are produced by running the
   [PyLEADER](https://github.com/SarahSonnett/PyLEADER) population pipeline
   (Steps 2–6 of its README) on the family of interest; one run per diameter
@@ -378,8 +389,9 @@ publicly available (or reproducible) as follows:
 `<out_dir>/<name>_synthpop.csv` is the **standalone, distributable database**:
 a single self-contained file, one row per synthetic asteroid, with columns
 `id, diam_km, b_over_a, pole_beta_deg, pole_lambda_deg, rot_period_h, a_au, e,
-i_deg, node_deg, argperi_deg, M_deg, pV, eta, H`, where `pole_beta_deg` is the
-magnitude |β| of the pole's ecliptic latitude (see the β convention above).
+i_deg, node_deg, argperi_deg, M_deg, pV, eta, H`, where `pole_beta_deg` is
+defined as the magnitude of the pole's ecliptic latitude (see the β convention
+above, including the known issue for current catalogs).
 These columns are a superset of the ingestion contract of the downstream
 **Simmer** NEOWISE-survey simulator (`simmer.catalog_io.REQUIRED_COLUMNS`),
 which reads the catalog directly and has no dependency on this repository. Two
