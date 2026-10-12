@@ -295,11 +295,10 @@ def plot_shape_pole(df, out: Path, name: str, model_marginals=None) -> Path:
     _style(ax, "pole ecliptic latitude |beta| (deg)", "density",
            f"{disp}: pole latitude (hemisphere-degenerate)")
     ax.legend(frameon=False, fontsize=8)
-    # pole_beta_deg is by contract the pole's |ecliptic latitude| (LEADER's own
-    # beta is the polar angle from the ecliptic pole, N&K 2017; see the
-    # KNOWN ISSUE in shape_pole.py); for a low-inclination orbit the
-    # obliquity is ~ 90 - |lat| deg (prograde branch; the retrograde branch
-    # is 90 + |lat|).
+    # pole_beta_deg is the pole's |ecliptic latitude|; for a low-inclination
+    # orbit the obliquity is ~ 90 - |beta| deg (prograde branch; the
+    # retrograde branch is 90 + |beta|). KNOWN ISSUE (shape_pole.py): legacy
+    # catalogs hold the colatitude, so for them both axis labels are wrong.
     sec = ax.secondary_xaxis("top", functions=(lambda b: 90.0 - b,
                                                lambda e: 90.0 - e))
     sec.set_xlabel("approx. obliquity (deg; prograde branch)", fontsize=8)

@@ -31,7 +31,7 @@ the Main Belt: either an established **collisional family** or a portion of the
 |----------|--------|--------|
 | diameter | `D` | (broken) power-law SFD, or log-uniform for detection-efficiency applications |
 | shape elongation | `b/a` | PyLEADER joint distribution `f_mean(p, β)` for the object's diameter bin |
-| pole orientation | `β` | same joint draw (LEADER's spin-axis polar angle); `pole_beta_deg` is defined as the pole's \|ecliptic latitude\| = 90° − β (see the β convention below) |
+| pole latitude | `β` | same joint draw; stored as the magnitude \|β\| (hemisphere-degenerate; see the β convention below) |
 | pole longitude | `λ` | uniform on [0°, 360°) (unconstrained by LEADER) |
 | rotation period | `P` | log-uniform, 2.2–20 h by default (configurable) |
 | orbit | `a, e, i, Ω, ω, M` | s3m model (background) **or** family-based generation |
@@ -43,24 +43,28 @@ Within a subpopulation, `p_V`, `η`, and the remaining properties are sampled
 independently — no intrinsic correlations are assumed — following the approach
 of Lilly et al. (2021) for the NEO Surveyor synthetic population model.
 
-**Convention for β.** In LEADER (Nortunen & Kaasalainen 2017, Sect. 2), `β` is
-the **polar angle of the spin axis measured from the ecliptic pole**, not the
-pole's ecliptic latitude and not the obliquity: β = 0° is an axis perpendicular
-to the ecliptic plane and β = 90° an axis lying in it. The LEADER inversion is
-hemisphere-degenerate, so only β ∈ [0°, 90°] is constrained and no hemisphere
-is assigned. The catalog column `pole_beta_deg` is defined as the magnitude of
-the pole's **ecliptic latitude**, |latitude| = 90° − β, which is what the
-downstream survey simulator reads. For a low-inclination orbit the obliquity is
-approximately 90° − |latitude| (prograde branch) or 90° + |latitude|
-(retrograde branch).
+**Convention for β.** `β` is the **ecliptic latitude of the spin pole**, the
+standard convention of lightcurve inversion (e.g., Hanuš et al. 2011, 2013),
+not the obliquity: β = 0° is an axis in the
+ecliptic plane and |β| = 90° an axis perpendicular to it. LEADER cannot
+distinguish the hemispheres, so only |β| ∈ [0°, 90°] is constrained, and the
+catalog column `pole_beta_deg` records that magnitude (no hemisphere is
+assigned). Nortunen & Kaasalainen (2017, Sect. 2) write β for a different
+angle, the colatitude (the angle of the spin axis from the ecliptic pole,
+90° − |β|). For a low-inclination orbit the obliquity is approximately
+90° − |β| (prograde branch) or 90° + |β| (retrograde branch).
 
-*Known issue (2026-10-12).* The current code copies PyLEADER's β into
-`pole_beta_deg` without the 90° − β conversion, so catalogs produced to date
-hold the polar angle rather than the latitude (for a low-inclination orbit,
-obliquity ≈ β on the prograde branch or 180° − β on the retrograde branch).
-The conversion is scheduled. Until it lands, read `pole_beta_deg` in existing
-catalogs as the polar angle; the latitude labels on the `shape_pole.png`
-figure carry the same caveat.
+*Known issue (2026-10-12).* PyLEADER summaries produced to date store the
+colatitude, and SynthPop copies it into `pole_beta_deg` unconverted, so
+catalogs produced to date hold the colatitude rather than |β| (for a
+low-inclination orbit, obliquity ≈ the stored value on the prograde branch or
+180° minus it on the retrograde branch). The fix is scheduled upstream:
+PyLEADER will write |β| with an explicit convention key, which SynthPop will
+check and record in each catalog's provenance. Until then, read
+`pole_beta_deg` in existing catalogs as the colatitude. The `shape_pole.png`
+figure has the same problem: its latitude labels are wrong for these catalogs,
+and its secondary "approx. obliquity" axis (90° minus the plotted value) shows
+|β| rather than the obliquity.
 
 **Diameter sampling laws.** `--sfd powerlaw` (the default) draws from a
 realistic cumulative distribution `N(>D) ∝ D^−slope`. `--sfd loguniform` draws
@@ -354,7 +358,8 @@ publicly available (or reproducible) as follows:
 * **PyLEADER population distributions** — the
   `Fam<id>_..._<low>km_to_<high>km_summary/` directories containing
   `population_distribution.npz`: the debiased joint distribution
-  `f_mean(p, β)` of shape elongation (`p = b/a`) and spin-axis polar angle (`β`, from the ecliptic pole)
+  `f_mean(p, β)` of shape elongation (`p = b/a`) and pole latitude (`β`; files
+  written before 2026-10-12 hold the colatitude, see the known issue above)
   on grids `p_grid` × `b_grid`. These are produced by running the
   [PyLEADER](https://github.com/SarahSonnett/PyLEADER) population pipeline
   (Steps 2–6 of its README) on the family of interest; one run per diameter
@@ -528,6 +533,14 @@ will link it on publication.
   of the Astronomical Society of the Pacific, 123, 423.
   [doi:10.1086/659833](https://doi.org/10.1086/659833)
   — source of the background-population orbital elements.
+- Hanuš, J., Ďurech, J., Brož, M., et al. 2011, *A study of asteroid
+  pole-latitude distribution based on an extended set of shape models derived
+  by the lightcurve inversion method*, Astronomy & Astrophysics, 530, A134.
+  [doi:10.1051/0004-6361/201116738](https://doi.org/10.1051/0004-6361/201116738)
+  — the standard (λ, β) pole convention used here (β = ecliptic latitude).
+- Hanuš, J., Brož, M., Ďurech, J., et al. 2013, *An anisotropic distribution of
+  spin vectors in asteroid families*, Astronomy & Astrophysics, 559, A134.
+  [doi:10.1051/0004-6361/201321993](https://doi.org/10.1051/0004-6361/201321993)
 - Lilly, E., et al. 2021 — the NEO Surveyor synthetic population model, whose
   physical-parameter methodology is followed here.
 - Mainzer, A. K., Bauer, J. M., Cutri, R. M., Grav, T., Kramer, E. A., Masiero,
@@ -545,7 +558,8 @@ will link it on publication.
   shape elongation and spin latitude distributions from scarce photometry*,
   Astronomy & Astrophysics, 608, A91.
   [doi:10.1051/0004-6361/201731360](https://doi.org/10.1051/0004-6361/201731360)
-  — the method implemented by PyLEADER; defines the (p, β) convention used here.
+  — the method implemented by PyLEADER; its β is the colatitude (see the β
+  convention above).
 - Radović, V., Novaković, B., Carruba, V., & Marčeta, D. 2017, *An automatic
   approach to exclude interlopers from asteroid families*, Monthly Notices of
   the Royal Astronomical Society, 471, 1215.

@@ -5,7 +5,7 @@ For each synthetic asteroid we:
 * select the PyLEADER diameter bin whose [low, high) range contains the
   object's diameter (falling back to the nearest bin if it lies outside all of
   them);
-* draw the **axis ratio** ``b/a`` and the spin-axis angle ``beta``
+* draw the **axis ratio** ``b/a`` and the **pole latitude** ``beta``
   *jointly* from that bin's PyLEADER joint distribution ``f_mean(p, beta)``
   (``population_distribution.npz``), preserving the shape/spin correlation
   rather than sampling the two marginals independently. LEADER is
@@ -17,22 +17,24 @@ For each synthetic asteroid we:
   (default 2.2-20 h: from the cohesionless spin barrier up through typical MBA
   periods).
 
-Note on conventions: PyLEADER's beta follows Nortunen & Kaasalainen (2017,
-Sect. 2) -- it is the **polar angle of the spin axis measured from the
-ecliptic pole**, folded into [0, 90] deg (beta = 0: axis perpendicular to the
-ecliptic plane; beta = 90: axis in the plane; hemispheres are
-indistinguishable). It is *not* the pole's ecliptic latitude and *not* the
-obliquity. The catalog column ``pole_beta_deg`` is defined as the magnitude
-of the pole's **ecliptic latitude**, ``|latitude| = 90 - beta``, which is what
-the downstream survey simulator reads. For a low-inclination orbit the
-obliquity is approximately ``90 - |latitude|`` deg (prograde branch) or
-``90 + |latitude|`` deg (retrograde branch).
+Note on conventions: beta is the **ecliptic latitude of the spin pole**, the
+standard convention of lightcurve inversion (e.g. Hanus et al. 2011, 2013;
+the DAMIT database): beta = 0 is an axis in the ecliptic plane, |beta| = 90 an
+axis perpendicular to it. LEADER cannot distinguish the hemispheres, so only
+|beta| in [0, 90] deg is constrained and ``pole_beta_deg`` stores that
+magnitude. Nortunen & Kaasalainen (2017, Sect. 2) write beta for a different
+angle, the **colatitude** (angle of the spin axis from the ecliptic pole,
+``90 - |beta|``). For a low-inclination orbit the obliquity is approximately
+``90 - |beta|`` deg (prograde branch) or ``90 + |beta|`` deg (retrograde
+branch).
 
-KNOWN ISSUE (2026-10-12): :func:`assign_shape_pole` does not yet apply the
-``90 - beta`` conversion, so ``pole_beta_deg`` in catalogs produced so far
-holds PyLEADER's polar angle rather than the latitude (for a low-inclination
-orbit, obliquity ~ ``beta`` prograde or ``180 - beta`` retrograde). The
-conversion is scheduled; until it lands, read existing catalogs accordingly.
+KNOWN ISSUE (2026-10-12): PyLEADER summaries produced so far store the
+colatitude in ``b_grid``, and :func:`assign_shape_pole` copies it unconverted,
+so ``pole_beta_deg`` in catalogs produced to date holds the colatitude rather
+than |beta| (for a low-inclination orbit, obliquity ~ the stored value on the
+prograde branch, 180 minus it on the retrograde branch). The fix is scheduled
+upstream: PyLEADER will write |beta| with an explicit convention key, which
+SynthPop will check and record in provenance.
 
 Distributions are loaded once per bin and cached.
 """
@@ -95,7 +97,7 @@ def assign_shape_pole(cfg: SynthConfig, diameters: np.ndarray,
         beta[idx] = bta
 
     # LEADER constrains only |beta|; store the magnitude (no invented sign)
-    # KNOWN ISSUE: no 90 - beta conversion yet, so this is still the polar angle
+    # KNOWN ISSUE: legacy PyLEADER files give the colatitude (fix scheduled upstream)
     pole_beta = np.clip(np.abs(beta), 0.0, 90.0)
     pole_lambda = rng.random(n) * 360.0
 
