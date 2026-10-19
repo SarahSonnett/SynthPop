@@ -77,8 +77,9 @@ class SynthConfig:
     # beta is the pole's ecliptic latitude (standard convention; what N&K 2017
     # call beta is the polar angle, 90 - |beta|). LEADER is hemisphere-
     # degenerate: only |beta| in [0, 90] deg is constrained, so the catalog
-    # stores the magnitude (no invented sign). Legacy PyLEADER files hold the
-    # polar angle; see the KNOWN ISSUE note in shape_pole.py.
+    # stores the magnitude (no invented sign). Legacy (unlabeled) PyLEADER
+    # files hold the polar angle and are refused; catalogs produced before
+    # 2026-10-19 hold it too (KNOWN ISSUE note in shape_pole.py).
     # rotation period, log-uniform between these bounds (hours); typical MBA
     # range, matching the spin-barrier floor at ~2.2 h
     rot_period_min_h: float = 2.2

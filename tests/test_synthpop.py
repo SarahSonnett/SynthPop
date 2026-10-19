@@ -123,13 +123,175 @@ def test_load_distributions_npz(tmp_path=None):
     np.savez(os.path.join(d, "population_distribution.npz"),
              p_grid=p_grid, b_grid=b_grid, f_mean=f_mean,
              pop_median_p=np.array([0.61, 0.60, 0.62]),
-             pop_median_b=np.array([19.0, 18.0, 20.0]), relerr=0.007)
+             pop_median_b=np.array([19.0, 18.0, 20.0]), relerr=0.007,
+             beta_convention="abs_ecliptic_latitude_deg",
+             geometry_frame="heliographic_stonyhurst")
     ld = load_distributions(d)
     assert ld.f_mean.shape == (12, 12)
     assert np.isclose(ld.pop_median_p[0], 0.61)
+    assert ld.beta_convention == "abs_ecliptic_latitude_deg"
+    assert ld.geometry_frame == "heliographic_stonyhurst"
     rng = np.random.default_rng(0)
     pa, bta = ld.joint.sample(1000, rng)
     assert pa.shape == (1000,) and bta.shape == (1000,)
+
+
+# PyLEADER's production grids (12 x 12; |beta| bin centers 6-84 deg)
+_P_GRID = np.linspace(0.30, 0.95, 12)
+_B_GRID = np.linspace(6.0, 84.0, 12)
+
+
+def _write_pyleader_dist(d, beta0=80.0, convention="abs_ecliptic_latitude_deg",
+                         frame="heliographic_stonyhurst", b_grid=_B_GRID):
+    """A population_distribution.npz concentrated near |beta| = beta0.
+
+    ``convention=None`` writes a legacy (unlabeled) file, as PyLEADER did
+    before the beta convention switch.
+    """
+    import os
+    os.makedirs(d, exist_ok=True)
+    P, B = np.meshgrid(_P_GRID, b_grid, indexing="ij")
+    f = np.exp(-0.5 * ((P - 0.6) / 0.1) ** 2 - 0.5 * ((B - beta0) / 4.0) ** 2)
+    keys = {} if convention is None else {"beta_convention": convention}
+    if frame is not None:
+        keys["geometry_frame"] = frame
+    np.savez(os.path.join(d, "population_distribution.npz"), p_grid=_P_GRID,
+             b_grid=b_grid, f_mean=f, f_lo=f, f_hi=f, alpha=1.0, relerr=0.01,
+             pop_median_p=np.array([0.6, 0.55, 0.65]),
+             pop_median_b=np.array([beta0, beta0 - 4, beta0 + 4]), **keys)
+    return d
+
+
+def test_legacy_pyleader_files_refused():
+    """Unlabeled PyLEADER products hold the polar angle: refuse, naming the converter."""
+    import tempfile, os
+    from synthpop.pyleader_io import LegacyBetaError, load_summary
+    root = tempfile.mkdtemp()
+
+    legacy = _write_pyleader_dist(os.path.join(root, "legacy"), convention=None, frame=None)
+    try:
+        load_distributions(legacy)
+    except LegacyBetaError as err:
+        assert "convert_beta_convention.py" in str(err)
+        assert "polar angle" in str(err)
+    else:
+        raise AssertionError("an unlabeled PyLEADER file was accepted")
+
+    other = _write_pyleader_dist(os.path.join(root, "other"), convention="polar_angle_deg")
+    try:
+        load_distributions(other)
+    except LegacyBetaError:
+        pass
+    else:
+        raise AssertionError("an unsupported beta_convention was accepted")
+
+    # a labeled file whose grid is not ascending |beta| in [0, 90] is malformed
+    bad = _write_pyleader_dist(os.path.join(root, "bad"), b_grid=_B_GRID[::-1])
+    try:
+        load_distributions(bad)
+    except ValueError as err:
+        assert not isinstance(err, LegacyBetaError)
+    else:
+        raise AssertionError("a descending b_grid was accepted")
+
+    # labeled without a frame: accepted, frame recorded as "unknown"
+    noframe = _write_pyleader_dist(os.path.join(root, "noframe"), frame=None)
+    assert load_distributions(noframe).geometry_frame == "unknown"
+
+    # the posterior reader applies the same check
+    np.savez(os.path.join(legacy, "posterior_peak.npz"), p_stats=np.zeros(6),
+             b_stats=np.zeros(6), observed=np.zeros(2))
+    try:
+        load_summary(legacy)
+    except LegacyBetaError:
+        pass
+    else:
+        raise AssertionError("an unlabeled posterior file was accepted")
+
+
+def _family_cfg_with_bins(cfg, bins, n=2000):
+    from dataclasses import replace
+    return replace(cfg, diameter_bins=bins, n_objects=n, sfd_kind="loguniform",
+                   diam_min_km=1.0, diam_max_km=20.0, make_plots=False)
+
+
+def test_high_latitude_distribution_reaches_catalog_with_provenance():
+    """|beta| = 80 deg in a labeled PyLEADER file gives catalog poles near 80 deg."""
+    import tempfile, os
+    from synthpop.config import DiameterBin
+    from synthpop.pipeline import generate_catalog
+    root = tempfile.mkdtemp()
+    small = _write_pyleader_dist(os.path.join(root, "Fam1_1km_to_5km_summary"))
+    large = _write_pyleader_dist(os.path.join(root, "Fam1_5km_to_30km_summary"))
+    cfg, gi = _demo_population_inputs(np.random.default_rng(3))
+    cfg = _family_cfg_with_bins(cfg, [DiameterBin(1.0, 5.0, small),
+                                      DiameterBin(5.0, 30.0, large)])
+    df, prov = generate_catalog(cfg, gi, np.random.default_rng(0), verbose=False)
+
+    beta = df["pole_beta_deg"].to_numpy()
+    assert abs(np.median(beta) - 80.0) < 3.0, np.median(beta)
+    assert np.mean(beta > 70.0) > 0.95
+    assert beta.max() <= 90.0
+
+    assert prov["pole_beta_convention"] == "abs_ecliptic_latitude_deg"
+    assert prov["geometry_frame"] == "heliographic_stonyhurst"
+    bins = prov["shape_pole_bins"]
+    assert len(bins) == 2 and sum(b["n_objects"] for b in bins) == len(df)
+    assert all(b["n_outside_bin"] == 0 for b in bins)
+
+    # bins built on different geometry frames: the catalog says "mixed"
+    _write_pyleader_dist(large, frame="ecliptic_j2000")
+    _, prov2 = generate_catalog(cfg, gi, np.random.default_rng(0), verbose=False)
+    assert prov2["geometry_frame"] == "mixed"
+    assert {b["geometry_frame"] for b in prov2["shape_pole_bins"]} == \
+        {"heliographic_stonyhurst", "ecliptic_j2000"}
+
+
+def test_ensemble_manifest_records_beta_convention():
+    import tempfile, os, json
+    from synthpop import ensemble
+    from synthpop.config import DiameterBin
+    root = tempfile.mkdtemp()
+    dist = _write_pyleader_dist(os.path.join(root, "Fam1_1km_to_30km_summary"))
+    cfg, gi = _demo_population_inputs(np.random.default_rng(5))
+    cfg = _family_cfg_with_bins(cfg, [DiameterBin(1.0, 30.0, dist)], n=300)
+    real_prepare = ensemble.prepare_inputs
+    ensemble.prepare_inputs = lambda c, verbose=True: gi   # skip the NEOWISE files
+    try:
+        manifest_path = ensemble.run_ensemble(
+            ensemble.EnsembleConfig(base=cfg, n_members=2, seed=0,
+                                    out_dir=os.path.join(root, "ens")), verbose=False)
+    finally:
+        ensemble.prepare_inputs = real_prepare
+    man = json.loads(manifest_path.read_text())
+    assert man["pole_beta_convention"] == "abs_ecliptic_latitude_deg"
+    assert man["geometry_frame"] == "heliographic_stonyhurst"
+    member_prov = json.loads((manifest_path.parent / "ens_m001_provenance.json").read_text())
+    assert member_prov["pole_beta_convention"] == "abs_ecliptic_latitude_deg"
+    assert member_prov["geometry_frame"] == "heliographic_stonyhurst"
+
+
+def test_relabeled_distribution_keeps_b_over_a_and_mirrors_beta():
+    """What regenerating a catalog from a converted PyLEADER product should show.
+
+    PyLEADER's converter rewrites a legacy file as b_grid -> 90 - b_grid
+    (reversed to ascend) with f_mean flipped along beta. With the same seed,
+    every b/a draw is unchanged, but |beta| is a fresh draw from the mirrored
+    distribution, not 90 - old object by object.
+    """
+    rng = np.random.default_rng(9)
+    f = rng.random((12, 12)) ** 3                      # asymmetric in beta
+    old = EmpiricalPDF2D(_P_GRID, _B_GRID, f)          # legacy: polar-angle grid
+    new = EmpiricalPDF2D(_P_GRID, 90.0 - _B_GRID[::-1], f[:, ::-1])
+    n = 40_000
+    p_old, b_old = old.sample(n, np.random.default_rng(0))
+    p_new, b_new = new.sample(n, np.random.default_rng(0))
+    assert np.array_equal(p_new, p_old)
+    assert np.mean(np.isclose(b_new, 90.0 - b_old)) < 0.01
+    h_old, _ = np.histogram(90.0 - b_old, new.y_edges)
+    h_new, _ = np.histogram(b_new, new.y_edges)
+    chi2_dof = np.sum((h_new - h_old) ** 2 / np.maximum(h_new + h_old, 1)) / (h_new.size - 1)
+    assert chi2_dof < 2.5, chi2_dof
 
 
 def test_sfd_loguniform_equal_log_bins():

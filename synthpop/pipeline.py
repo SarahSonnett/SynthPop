@@ -188,6 +188,9 @@ def generate_catalog(cfg: SynthConfig, gi: PopulationInputs,
     df = assemble.build_catalog(cfg.name, diameters, sp, orbits, phys)
     prov = {"name": cfg.name, "mode": cfg.mode, "n_objects": cfg.n_objects,
             "seed": cfg.seed,
+            # beta contract keys, copied from the PyLEADER products
+            **shape_pole.pole_provenance(sp.sources),
+            "shape_pole_bins": sp.sources,
             **({"family_orbit_model": cfg.family_orbit_model,
                 **({"resample": resample_info} if resample_info else {})}
                if cfg.mode == FAMILY else {}),

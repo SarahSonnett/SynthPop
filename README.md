@@ -54,13 +54,24 @@ angle, the polar angle (the angle of the spin axis from the ecliptic pole,
 90° − |β|). For a low-inclination orbit the obliquity is approximately
 90° − |β| (prograde branch) or 90° + |β| (retrograde branch).
 
-*Known issue (2026-10-12).* PyLEADER summaries produced to date store the
-polar angle, and SynthPop copies it into `pole_beta_deg` unconverted, so
-catalogs produced to date hold the polar angle rather than |β| (for a
-low-inclination orbit, obliquity ≈ the stored value on the prograde branch or
-180° minus it on the retrograde branch). The fix is scheduled upstream:
-PyLEADER will write |β| with an explicit convention key, which SynthPop will
-check and record in each catalog's provenance. Until then, read
+PyLEADER products declare the convention in a `beta_convention` entry
+(`"abs_ecliptic_latitude_deg"`) and record the frame of the observing geometry
+behind their bias calibration in `geometry_frame`. SynthPop reads only products
+that carry the convention entry, copies their |β| values without conversion,
+and records `pole_beta_convention` and `geometry_frame` in each catalog's
+provenance and in each ensemble manifest (see [Output](#output)). A product
+without the entry was written before the convention switch and holds the polar
+angle; SynthPop refuses it and names PyLEADER's converter
+(`scripts/convert_beta_convention.py`), which rewrites such products exactly.
+
+*Known issue (2026-10-12; updated 2026-10-19).* Catalogs produced to date were
+drawn from PyLEADER summaries that stored the polar angle, which SynthPop
+copied into `pole_beta_deg` unconverted, so they hold the polar angle rather
+than |β| (for a low-inclination orbit, obliquity ≈ the stored value on the
+prograde branch or 180° minus it on the retrograde branch). Their provenance
+files carry no `pole_beta_convention` entry. The current code refuses those
+summaries, so it cannot write new polar-angle catalogs; the existing ones will
+be replaced once PyLEADER's products are converted. Until then, read
 `pole_beta_deg` in existing catalogs as the polar angle. The `shape_pole.png`
 figure has the same problem: its latitude labels are wrong for these catalogs,
 and its secondary "approx. obliquity" axis (90° minus the plotted value) shows
@@ -358,9 +369,12 @@ publicly available (or reproducible) as follows:
 * **PyLEADER population distributions** — the
   `Fam<id>_..._<low>km_to_<high>km_summary/` directories containing
   `population_distribution.npz`: the debiased joint distribution
-  `f_mean(p, β)` of shape elongation (`p = b/a`) and pole latitude (`β`; files
-  written before 2026-10-12 hold the polar angle, see the known issue above)
-  on grids `p_grid` × `b_grid`. These are produced by running the
+  `f_mean(p, β)` of shape elongation (`p = b/a`) and pole latitude |β| on
+  grids `p_grid` × `b_grid` (|β| ascending, in degrees), with the
+  `beta_convention` and `geometry_frame` entries described under the β
+  convention above (files without `beta_convention` hold the polar angle and
+  are refused until converted with PyLEADER's
+  `scripts/convert_beta_convention.py`). These are produced by running the
   [PyLEADER](https://github.com/SarahSonnett/PyLEADER) population pipeline
   (Steps 2–6 of its README) on the family of interest; one run per diameter
   bin.
@@ -402,7 +416,14 @@ These columns are a superset of the ingestion contract of the downstream
 which reads the catalog directly and has no dependency on this repository. Two
 sidecar files record provenance and are not required to use the database:
 `<name>_config.json` (the exact `SynthConfig`) and `<name>_provenance.json`
-(every fitted parameter).
+(every fitted parameter). The provenance file also carries
+`pole_beta_convention` and `geometry_frame`, copied from the PyLEADER products
+(`geometry_frame` is `"mixed"` when the diameter bins drawn from disagree), and
+`shape_pole_bins`, one record per PyLEADER bin drawn from: its directory and
+diameter range, the number of objects drawn from it, how many of those lie
+outside its range (nearest-bin fallback), and its convention and frame. An
+ensemble's `<name>_ensemble_manifest.json` repeats `pole_beta_convention` and
+`geometry_frame` for the ensemble as a whole.
 
 Four diagnostic figures are written alongside the catalog (suppressed with
 `--no-plots`). Each is labeled "Synthetic <name>", with a footer stating that

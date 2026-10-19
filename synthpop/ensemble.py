@@ -18,6 +18,9 @@ measured members -> tight band, few -> wide band.
 Member 0 is the nominal (unresampled) fit; members 1..N-1 are bootstrap draws.
 A ``manifest.json`` records every member's catalog path and drawn fit summary, so
 the systematic band is fully traceable. Simmer's ``ensemble`` step consumes it.
+The manifest also carries the beta contract keys ``pole_beta_convention`` and
+``geometry_frame``, taken from the PyLEADER bins all members drew from
+(:func:`synthpop.shape_pole.pole_provenance`).
 
 Note: the shape/pole (b/a, beta) distribution comes from a precomputed PyLEADER
 joint PDF, not a parametric fit of raw data here, so it is held fixed for now;
@@ -35,7 +38,7 @@ import json
 import numpy as np
 
 from .config import SynthConfig, FAMILY
-from . import physical, orbits_family, io
+from . import physical, orbits_family, io, shape_pole
 from .pipeline import prepare_inputs, generate_catalog, PopulationInputs
 
 
@@ -119,6 +122,7 @@ def run_ensemble(ecfg: EnsembleConfig, verbose: bool = True) -> Path:
     # One independent RNG stream per member, reproducible from ecfg.seed.
     seeds = np.random.SeedSequence(ecfg.seed).spawn(ecfg.n_members)
     members = []
+    pole_sources = []
     for m in range(ecfg.n_members):
         boot_rng = np.random.default_rng(seeds[m])          # bootstrap resampling
         gen_rng = np.random.default_rng(seeds[m].spawn(1)[0])  # population draw
@@ -130,6 +134,7 @@ def run_ensemble(ecfg: EnsembleConfig, verbose: bool = True) -> Path:
         df, prov = generate_catalog(mcfg, gi, gen_rng, verbose=False)
         prov["ensemble_member"] = m
         prov["nominal"] = (m == 0)
+        pole_sources.extend(prov["shape_pole_bins"])
         cat_path = io.write_catalog(df, mcfg, provenance=prov)
         members.append({"member": m, "nominal": m == 0,
                         "catalog": cat_path.name, "n_objects": int(len(df)),
@@ -141,6 +146,7 @@ def run_ensemble(ecfg: EnsembleConfig, verbose: bool = True) -> Path:
         "n_members": ecfg.n_members, "seed": ecfg.seed,
         "bootstrap_physical": ecfg.bootstrap_physical,
         "bootstrap_orbits": ecfg.bootstrap_orbits,
+        **shape_pole.pole_provenance(pole_sources),
         "n_neowise_members": int(base_gi.neowise_pV.size),
         "n_family_members": (int(base_gi.fam_a.size)
                              if base_gi.fam_a is not None else None),

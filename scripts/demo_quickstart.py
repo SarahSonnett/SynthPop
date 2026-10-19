@@ -27,11 +27,15 @@ rng = np.random.default_rng(9)
 tmp = Path(tempfile.mkdtemp(prefix="synthpop_demo_"))
 
 # --- 1. A PyLEADER-style joint (p, beta) distribution, two diameter bins ----
-# p = b/a (shape elongation), beta = |spin-pole ecliptic latitude| in degrees.
-# Small members are modeled slightly more elongated than large ones, with a
-# mild p-beta correlation — the kind of structure PyLEADER recovers.
+# p = b/a (shape elongation), beta = |spin-pole ecliptic latitude| in degrees,
+# on PyLEADER's production grids (|beta| bin centers 6-84 deg). Small members
+# are modeled slightly more elongated than large ones, with a mild p-beta
+# correlation — the kind of structure PyLEADER recovers. Like real PyLEADER
+# output, each file declares its beta convention (SynthPop refuses files
+# without it) and a geometry frame; a fabricated distribution has no observing
+# geometry, so its frame is "unknown".
 p_grid = np.linspace(0.30, 0.95, 12)
-b_grid = np.linspace(3.75, 86.25, 12)
+b_grid = np.linspace(6.0, 84.0, 12)
 for lo, hi, p0 in [(1, 5, 0.66), (5, 25, 0.76)]:
     P, B = np.meshgrid(p_grid, b_grid, indexing="ij")
     beta0 = 30.0 + 25.0 * (p0 - P)          # more elongated -> lower |beta|
@@ -39,7 +43,8 @@ for lo, hi, p0 in [(1, 5, 0.66), (5, 25, 0.76)]:
     d = tmp / "leader" / f"Fam9999_demo_V_{lo}km_to_{hi}km_summary"
     d.mkdir(parents=True)
     np.savez(d / "population_distribution.npz",
-             p_grid=p_grid, b_grid=b_grid, f_mean=f / f.sum())
+             p_grid=p_grid, b_grid=b_grid, f_mean=f / f.sum(),
+             beta_convention="abs_ecliptic_latitude_deg", geometry_frame="unknown")
 
 # --- 2. A proper-elements member file (id, H, a, e, sin i, famid) -----------
 N_MEM = 400
